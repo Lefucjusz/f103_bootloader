@@ -14,7 +14,10 @@ target_link_options(${CMAKE_PROJECT_NAME}
         -T ${CMAKE_SOURCE_DIR}/linkerscript.ld
 )
 
+add_subdirectory(system)
+
 target_link_libraries(${CMAKE_PROJECT_NAME}
     PRIVATE
         stm32f103
+        system
 )

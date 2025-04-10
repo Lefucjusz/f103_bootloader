@@ -4,6 +4,7 @@
     "files.associations": {
         "*.cpp": "cpp",
         "rcc.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "systick.h": "c"
     }
 }
