@@ -14,8 +14,6 @@ int main(void)
 
     uint32_t last_blink_tick = 0;
 
-    uart_write("siema", 5);
-
     while (1) {
         if (system_get_ticks() - last_blink_tick > 500) {
             gpio_toggle(GPIOC, GPIO13);
@@ -28,4 +26,11 @@ int main(void)
     }
     
     return 0;
+}
+
+void hard_fault_handler(void)
+{
+    while (1) {
+        __asm__ __volatile__("nop\n");
+    }
 }

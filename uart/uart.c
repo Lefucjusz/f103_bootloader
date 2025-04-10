@@ -1,13 +1,28 @@
 #include "uart.h"
-#include <libopencm3/stm32/rcc.h>
+#include <ring_buffer.h>
 #include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/gpio.h>
 
+#define UART_PERIPH USART1
+#define UART_PERIPH_RCC RCC_USART1
+#define UART_PERIPH_IRQ NVIC_USART1_IRQ
+
+#define UART_PORT GPIOA
+#define UART_PORT_RCC RCC_GPIOA
+#define UART_TX_PIN GPIO_USART1_TX
+#define UART_RX_PIN GPIO_USART1_RX
+
+#define UART_BAUD_RATE 115200
 #define UART_DATA_BITS 8
+
+#define UART_RX_BUFFER_SIZE 64
 
 struct uart_ctx_t
 {
-    volatile uint8_t data_buffer;
-    volatile bool data_available;
+    struct ring_buffer_t rx_buf;
+    uint8_t rx_buf_data[UART_RX_BUFFER_SIZE];
 };
 
 static struct uart_ctx_t ctx;
@@ -18,14 +33,19 @@ void usart1_isr(void)
     const bool data_received = usart_get_flag(UART_PERIPH, USART_FLAG_RXNE);
 
     if (data_received || is_overrun) {
-        ctx.data_buffer = usart_recv(UART_PERIPH);
-        ctx.data_available = true;
+        (void)ring_buffer_write_byte(&ctx.rx_buf, usart_recv(UART_PERIPH)); // Just ignore any errors as there's no way to recover
     }
 }
 
-void uart_init(void)
+int uart_init(void)
 {
-    /* Configure GPIOs */
+    /* Initialize Rx ring buffer */
+    const int err = ring_buffer_init(&ctx.rx_buf, ctx.rx_buf_data, sizeof(ctx.rx_buf_data));
+    if (err) {
+        return err;
+    }
+
+    /* Configure UART pins */
     rcc_periph_clock_enable(UART_PORT_RCC);
     gpio_set_mode(UART_PORT, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, UART_TX_PIN);
     gpio_set_mode(UART_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, UART_RX_PIN);
@@ -71,25 +91,19 @@ void uart_write_byte(uint8_t data)
 
 size_t uart_read(void *data, size_t size)
 {
-    if (data == NULL) {
-        return 0;
-    }
-
-    uint8_t *data_ptr = data;
-
-    if (size > 0 && ctx.data_available) {
-        data_ptr[0] = ctx.data_buffer;
-        ctx.data_available = false;
-    }
+    return ring_buffer_read(&ctx.rx_buf, data, size);
 }
 
 uint8_t uart_read_byte(void)
 {
-    ctx.data_available = false;
-    return ctx.data_buffer;
+    uint8_t data;
+
+    (void)ring_buffer_read(&ctx.rx_buf, &data, sizeof(data));
+
+    return data;
 }
 
 bool uart_data_available(void)
 {
-    return ctx.data_available;
+    return !ring_buffer_is_empty(&ctx.rx_buf);
 }

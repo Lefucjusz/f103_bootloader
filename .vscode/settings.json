@@ -9,6 +9,9 @@
         "usart.h": "c",
         "usart_common_f124.h": "c",
         "usart_common_all.h": "c",
-        "uart.h": "c"
+        "uart.h": "c",
+        "stdint.h": "c",
+        "errno.h": "c",
+        "features.h": "c"
     }
 }
