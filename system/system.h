@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define SYSTEM_HSI_CONFIG RCC_CLOCK_HSI_24MHZ
+#define SYSTEM_HSE_CONFIG RCC_CLOCK_HSE8_24MHZ
 #define SYSTEM_SYSTICK_FREQ_HZ 1000 // Gives standard resolution of 1ms per tick
 
 void system_init(void);

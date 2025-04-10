@@ -5,6 +5,10 @@
         "*.cpp": "cpp",
         "rcc.h": "c",
         "gpio.h": "c",
-        "systick.h": "c"
+        "systick.h": "c",
+        "usart.h": "c",
+        "usart_common_f124.h": "c",
+        "usart_common_all.h": "c",
+        "uart.h": "c"
     }
 }
