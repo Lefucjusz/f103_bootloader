@@ -1,0 +1,9 @@
+{
+    "cortex-debug.gdbPath": "${userHome}/gcc-arm-none-eabi-10-2020-q4-major/bin/arm-none-eabi-gdb",
+    "cortex-debug.JLinkGDBServerPath": "/usr/bin/JLinkGDBServer",
+    "files.associations": {
+        "*.cpp": "cpp",
+        "rcc.h": "c",
+        "gpio.h": "c"
+    }
+}

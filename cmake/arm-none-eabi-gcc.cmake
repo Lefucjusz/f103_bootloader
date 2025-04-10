@@ -1,6 +1,8 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS True)
+
 set(TOOLCHAIN_PREFIX arm-none-eabi-)
 set(FLAGS "-Wno-psabi --specs=nosys.specs -fdata-sections -ffunction-sections -Wl,--gc-sections")
 

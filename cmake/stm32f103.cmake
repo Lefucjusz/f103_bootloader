@@ -10,7 +10,7 @@ set_property(TARGET stm32f103 PROPERTY IMPORTED_LOCATION ${OPENCM3_ROOT_DIR}/lib
 add_dependencies(stm32f103 libopencm3)
 target_link_directories(stm32f103 INTERFACE ${OPENCM3_ROOT_DIR}/lib)
 
-target_compile_definitions(stm32f103 INTERFACE -DSTM32F1)
+target_compile_definitions(stm32f103 INTERFACE STM32F1)
 
 set(COMPILE_OPTIONS
     --static

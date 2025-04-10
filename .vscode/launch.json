@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "Debug (JLink)",
+			"cwd": "${workspaceFolder}",
+			"executable": "${workspaceFolder}/build/f103_bootloader.elf",
+			"request": "launch",
+			"type": "cortex-debug",
+			"servertype": "jlink",
+			"device": "STM32F103C8",
+			"runToEntryPoint": "main",
+			"interface": "swd",
+			"preLaunchTask": "build_project"
+        }
+    ]
+}
