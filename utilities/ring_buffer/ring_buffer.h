@@ -9,7 +9,7 @@ struct ring_buffer_t
     uint8_t *buffer;
     size_t write_index;
     size_t read_index;
-    size_t mask;
+    size_t size;
 };
 
 int ring_buffer_init(struct ring_buffer_t *rb, uint8_t *buffer, size_t size);

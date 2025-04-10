@@ -1,5 +1,4 @@
 #include "ring_buffer.h"
-#include <utils.h>
 #include <errno.h>
 
 int ring_buffer_init(struct ring_buffer_t *rb, uint8_t *buffer, size_t size)
@@ -8,14 +7,10 @@ int ring_buffer_init(struct ring_buffer_t *rb, uint8_t *buffer, size_t size)
         return -EINVAL;
     }
 
-    if (!IS_POWER_OF_TWO(size)) {
-        return -EINVAL;
-    }
-
+    rb->size = size;
     rb->buffer = buffer;
     rb->write_index = 0;
     rb->read_index = 0;
-    rb->mask = size - 1;
 
     return 0;
 }
@@ -42,7 +37,7 @@ int ring_buffer_write_byte(struct ring_buffer_t *rb, uint8_t data)
     const size_t read_index = rb->read_index;
     size_t write_index = rb->write_index;
 
-    const size_t next_write_index = (write_index + 1) & rb->mask;
+    const size_t next_write_index = (write_index + 1) % rb->size;
     if (next_write_index == read_index) {
         return -ENOSPC;
     }
@@ -83,7 +78,7 @@ int ring_buffer_read_byte(struct ring_buffer_t *rb, uint8_t *data)
     }
 
     *data = rb->buffer[read_index];
-    read_index = (read_index + 1) & rb->mask;
+    read_index = (read_index + 1) % rb->size;
     rb->read_index = read_index;
 
     return 0;

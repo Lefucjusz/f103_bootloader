@@ -2,6 +2,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <system.h>
 #include <uart.h>
+#include <comm.h>
 
 int main(void)
 {
@@ -14,6 +15,15 @@ int main(void)
 
     uint32_t last_blink_tick = 0;
 
+    char buf[4];
+    int v = sizeof(struct comm_packet_t);
+    buf[0] = 0x30 + v / 10;
+    buf[1] = 0x30 + v % 10;
+
+    uart_write(buf, 2);
+
+    // comm_init();
+
     while (1) {
         if (system_get_ticks() - last_blink_tick > 500) {
             gpio_toggle(GPIOC, GPIO13);
@@ -23,6 +33,10 @@ int main(void)
         if (uart_data_available()) {
             uart_write_byte(uart_read_byte());
         }
+
+        system_delay_ms(2000);
+
+        // comm_task();
     }
     
     return 0;

@@ -17,10 +17,12 @@ target_link_options(${CMAKE_PROJECT_NAME}
 add_subdirectory(system)
 add_subdirectory(uart)
 add_subdirectory(utilities)
+add_subdirectory(comm)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
     PRIVATE
         stm32f103
         system
         uart
+        comm
 )
