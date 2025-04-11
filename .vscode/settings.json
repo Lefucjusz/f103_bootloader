@@ -14,6 +14,9 @@
         "errno.h": "c",
         "features.h": "c",
         "stdbool.h": "c",
-        "string_view": "c"
-    }
+        "string_view": "c",
+        "flash.h": "c",
+        "flash_common_f01.h": "c"
+    },
+    "cortex-debug.variableUseNaturalFormat": false
 }

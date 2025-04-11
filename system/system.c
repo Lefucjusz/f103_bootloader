@@ -17,10 +17,10 @@ void sys_tick_handler(void)
 void system_init(void)
 {
     /* Configure RCC */
-    rcc_clock_setup_pll(&rcc_hse_configs[SYSTEM_HSE_CONFIG]);
+    rcc_clock_setup_pll(&rcc_hsi_configs[SYSTEM_HSI_CONFIG]);
 
     /* Configure SysTick */
-    systick_set_frequency(SYSTEM_SYSTICK_FREQ_HZ, rcc_hse_configs[SYSTEM_HSE_CONFIG].ahb_frequency);
+    systick_set_frequency(SYSTEM_SYSTICK_FREQ_HZ, rcc_hsi_configs[SYSTEM_HSI_CONFIG].ahb_frequency);
     systick_counter_enable();
     systick_interrupt_enable();
 }

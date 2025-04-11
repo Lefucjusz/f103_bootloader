@@ -53,7 +53,7 @@ static void comm_create_ctrl_packet(struct comm_packet_t *packet, enum comm_pack
     comm_set_packet_length(packet, 1);
     comm_set_packet_type(packet, COMM_PACKET_CTRL);
     packet->payload[0] = op;
-    (void)memset(&packet->payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1);
+    (void)memset(&packet->payload[COMM_PACKET_METADATA_SIZE], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1);
     packet->crc.value = comm_compute_crc(packet);
 }
 
@@ -94,7 +94,7 @@ bool comm_packets_available(void)
 
 uint16_t comm_compute_crc(const struct comm_packet_t *packet)
 {
-    return crc16_xmodem(&ctx.current_rx_packet, COMM_PACKET_TOTAL_SIZE - COMM_PACKET_CRC16_SIZE);
+    return crc16_xmodem(packet, COMM_PACKET_TOTAL_SIZE - COMM_PACKET_CRC16_SIZE);
 }
 
 int comm_set_packet_type(struct comm_packet_t *packet, enum comm_packet_type_t type)
@@ -124,14 +124,14 @@ int comm_set_packet_length(struct comm_packet_t *packet, uint8_t length)
     }
 
     packet->metadata &= ~COMM_PACKET_LENGTH_MASK;
-    packet->metadata |= (length << COMM_PACKET_TYPE_SHIFT) & COMM_PACKET_TYPE_MASK;
+    packet->metadata |= (length << COMM_PACKET_LENGTH_SHIFT) & COMM_PACKET_LENGTH_MASK;
 
     return 0;
 }
 
 void comm_task(void)
 {
-    while (uart_data_available()) {
+    while (uart_data_available() || (ctx.state == COMM_PROCESS_PACKET)) {
         switch (ctx.state) {
             case COMM_RECEIVE_METADATA:
                 ctx.current_rx_packet.metadata = uart_read_byte();

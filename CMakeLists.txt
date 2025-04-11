@@ -18,6 +18,7 @@ add_subdirectory(system)
 add_subdirectory(uart)
 add_subdirectory(utilities)
 add_subdirectory(comm)
+add_subdirectory(flash)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
     PRIVATE
@@ -25,4 +26,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         system
         uart
         comm
+        flash
 )

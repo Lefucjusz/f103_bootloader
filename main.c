@@ -3,40 +3,34 @@
 #include <system.h>
 #include <uart.h>
 #include <comm.h>
+#include <flash.h>
+#include <string.h>
 
 int main(void)
 {
     system_init();
-    uart_init();
+    // uart_init();
+    // comm_init();
     
     rcc_periph_clock_enable(RCC_GPIOC);
 
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
-    uint32_t last_blink_tick = 0;
+    flash_erase_main_app();
 
-    char buf[4];
-    int v = sizeof(struct comm_packet_t);
-    buf[0] = 0x30 + v / 10;
-    buf[1] = 0x30 + v % 10;
+    uint8_t data[16];
+    for (size_t i = 0; i < 16; ++i) {
+        data[i] = i % 2 ? 0xBA : 0xDF;
+    }
 
-    uart_write(buf, 2);
+    flash_write(FLASH_MAIN_APP_START, data, 5);
 
-    // comm_init();
+    memset(data, 0, sizeof(data));
+
+    flash_read(FLASH_MAIN_APP_START, data, 5);
 
     while (1) {
-        if (system_get_ticks() - last_blink_tick > 500) {
-            gpio_toggle(GPIOC, GPIO13);
-            last_blink_tick = system_get_ticks();
-        }
-
-        if (uart_data_available()) {
-            uart_write_byte(uart_read_byte());
-        }
-
-        system_delay_ms(2000);
-
-        // comm_task();
+        
     }
     
     return 0;
