@@ -3,13 +3,20 @@
 #include <utils.h>
 #include <ring_buffer.h>
 #include <string.h>
+#include <errno.h>
 
 #define COMM_PACKET_BUFFER_COUNT 8
 #define COMM_PACKET_BUFFER_SIZE (COMM_PACKET_BUFFER_COUNT * sizeof(struct comm_packet_t))
 
+#define COMM_PACKET_LENGTH_SHIFT 0
+#define COMM_PACKET_LENGTH_MASK (0x1F << COMM_PACKET_LENGTH_SHIFT)
+
+#define COMM_PACKET_TYPE_SHIFT 5
+#define COMM_PACKET_TYPE_MASK (0x07 << COMM_PACKET_TYPE_SHIFT)
+
 enum comm_state_t
 {
-    COMM_RECEIVE_LENGTH = 0,
+    COMM_RECEIVE_METADATA = 0,
     COMM_RECEIVE_DATA,
     COMM_RECEIVE_CRC,
     COMM_PROCESS_PACKET
@@ -41,6 +48,15 @@ static bool comm_is_ack_packet(const struct comm_packet_t *packet)
     return (memcmp(packet, &ctx.ack_packet, COMM_PACKET_TOTAL_SIZE) == 0);
 }
 
+static void comm_create_ctrl_packet(struct comm_packet_t *packet, enum comm_packet_op_t op)
+{
+    comm_set_packet_length(packet, 1);
+    comm_set_packet_type(packet, COMM_PACKET_CTRL);
+    packet->payload[0] = op;
+    (void)memset(&packet->payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1);
+    packet->crc.value = comm_compute_crc(packet);
+}
+
 int comm_init(void)
 {
     /* Initialize packet ring buffer */
@@ -49,24 +65,21 @@ int comm_init(void)
         return err;
     }
 
-    /* Create retransmission request packet */
-    ctx.retx_packet.length = 1;
-    ctx.retx_packet.payload[0] = COMM_PACKET_RETX_PAYLOAD;
-    (void)memset(&ctx.retx_packet.payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1);
-    ctx.retx_packet.crc.value = comm_compute_crc(&ctx.retx_packet);
-
-    /* Create acknowledge packet */
-    ctx.ack_packet.length = 1;
-    ctx.ack_packet.payload[0] = COMM_PACKET_ACK_PAYLOAD;
-    (void)memset(&ctx.ack_packet.payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1);
-    ctx.ack_packet.crc.value = comm_compute_crc(&ctx.ack_packet);
+    /* Create retransmit and acknowledge packets */
+    comm_create_ctrl_packet(&ctx.retx_packet, COMM_PACKET_OP_RETX);
+    comm_create_ctrl_packet(&ctx.ack_packet, COMM_PACKET_OP_ACK);
 
     return 0;
 }
 
 void comm_write(const struct comm_packet_t *packet)
 {
+    if (packet == NULL) {
+        return;
+    }
+
     uart_write(packet, COMM_PACKET_TOTAL_SIZE);
+    ctx.last_tx_packet = *packet;
 }
 
 void comm_read(struct comm_packet_t *packet)
@@ -84,12 +97,44 @@ uint16_t comm_compute_crc(const struct comm_packet_t *packet)
     return crc16_xmodem(&ctx.current_rx_packet, COMM_PACKET_TOTAL_SIZE - COMM_PACKET_CRC16_SIZE);
 }
 
+int comm_set_packet_type(struct comm_packet_t *packet, enum comm_packet_type_t type)
+{
+    if (packet == NULL) {
+        return -EINVAL;
+    }
+
+    if ((type < 0) || (type >= COMM_PACKET_COUNT)) {
+        return -EINVAL;
+    }
+
+    packet->metadata &= ~COMM_PACKET_TYPE_MASK;
+    packet->metadata |= (type << COMM_PACKET_TYPE_SHIFT) & COMM_PACKET_TYPE_MASK;
+
+    return 0;
+}
+
+int comm_set_packet_length(struct comm_packet_t *packet, uint8_t length)
+{
+    if (packet == NULL) {
+        return -EINVAL;
+    }
+
+    if (length > COMM_PACKET_PAYLOAD_SIZE) {
+        return -EINVAL;
+    }
+
+    packet->metadata &= ~COMM_PACKET_LENGTH_MASK;
+    packet->metadata |= (length << COMM_PACKET_TYPE_SHIFT) & COMM_PACKET_TYPE_MASK;
+
+    return 0;
+}
+
 void comm_task(void)
 {
     while (uart_data_available()) {
         switch (ctx.state) {
-            case COMM_RECEIVE_LENGTH:
-                ctx.current_rx_packet.length = uart_read_byte();
+            case COMM_RECEIVE_METADATA:
+                ctx.current_rx_packet.metadata = uart_read_byte();
                 ctx.state = COMM_RECEIVE_DATA;
                 break;
 
@@ -116,36 +161,36 @@ void comm_task(void)
                 const uint16_t computed_crc = comm_compute_crc(&ctx.current_rx_packet);
                 if (ctx.current_rx_packet.crc.value != computed_crc) {
                     comm_write(&ctx.retx_packet);
-                    ctx.state = COMM_RECEIVE_LENGTH;
+                    ctx.state = COMM_RECEIVE_METADATA;
                     break;
                 }
 
                 /* Handle retransmit request */
                 if (comm_is_retx_packet(&ctx.current_rx_packet)) {
                     comm_write(&ctx.last_tx_packet);
-                    ctx.state = COMM_RECEIVE_LENGTH;
+                    ctx.state = COMM_RECEIVE_METADATA;
                     break;
                 }
 
                 /* Handle acknowledge packet */
                 if (comm_is_ack_packet(&ctx.current_rx_packet)) {
-                    ctx.state = COMM_RECEIVE_LENGTH;
+                    ctx.state = COMM_RECEIVE_METADATA;
                     break;
                 }
 
                 /* Handle data packet */
                 const size_t written = ring_buffer_write(&ctx.packet_buffer, &ctx.current_rx_packet, COMM_PACKET_TOTAL_SIZE);
-                if (written == COMM_PACKET_TOTAL_SIZE) {
+                if (written != COMM_PACKET_TOTAL_SIZE) {
                     __asm__ __volatile__("bkpt #0\n"); // TODO just for debug
                 }
 
                 comm_write(&ctx.ack_packet);
-                ctx.state = COMM_RECEIVE_LENGTH;
+                ctx.state = COMM_RECEIVE_METADATA;
             } break;
 
             default:
                 /* We should never get here, but just in case */
-                ctx.state = COMM_RECEIVE_LENGTH;
+                ctx.state = COMM_RECEIVE_METADATA;
                 break;
         }
     }

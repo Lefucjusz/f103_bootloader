@@ -13,6 +13,7 @@
         "stdint.h": "c",
         "errno.h": "c",
         "features.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "string_view": "c"
     }
 }
