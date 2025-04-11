@@ -19,6 +19,8 @@ add_subdirectory(uart)
 add_subdirectory(utilities)
 add_subdirectory(comm)
 add_subdirectory(flash)
+add_subdirectory(timer)
+add_subdirectory(update)
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
     PRIVATE
@@ -27,4 +29,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         uart
         comm
         flash
+        timer
+        update
 )
+
+# TODO clean link libraries

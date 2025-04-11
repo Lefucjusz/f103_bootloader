@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 /* Generic implementation of non-reflect CRC16 */
-inline static uint16_t crc16(uint16_t poly, uint16_t seed, const void *data, size_t size)
+inline static uint16_t utils_crc16(uint16_t poly, uint16_t seed, const void *data, size_t size)
 {
     const uint8_t *data_ptr = data;
 	uint16_t crc = seed;
@@ -25,7 +25,20 @@ inline static uint16_t crc16(uint16_t poly, uint16_t seed, const void *data, siz
 }
 
 /* Implementation of CCITT-XMODEM CRC16 */
-inline static uint16_t crc16_xmodem(const void *data, size_t size)
+inline static uint16_t utils_crc16_xmodem(const void *data, size_t size)
 {
-    return crc16(0x1021, 0x0000, data, size);
+    return utils_crc16(0x1021, 0x0000, data, size);
+}
+
+inline static bool utils_memcheck(const void *data, uint8_t value, size_t size)
+{
+	const uint8_t *data_ptr = data;
+
+	for (size_t i = 0; i < size; ++i) {
+		if (data_ptr[i] != value) {
+			return false;
+		}
+	}
+
+	return true;
 }

@@ -5,6 +5,8 @@
 #include <string.h>
 #include <errno.h>
 
+// TODO maybe rewrite memcmp and memset if it saves flash
+
 #define COMM_PACKET_BUFFER_COUNT 8
 #define COMM_PACKET_BUFFER_SIZE (COMM_PACKET_BUFFER_COUNT * sizeof(struct comm_packet_t))
 
@@ -29,32 +31,15 @@ struct comm_ctx_t
     struct comm_packet_t last_tx_packet;
     struct comm_packet_t current_rx_packet;
     struct comm_packet_t retx_packet;
-    struct comm_packet_t ack_packet;
     struct ring_buffer_t packet_buffer;
     uint8_t packet_buffer_data[COMM_PACKET_BUFFER_SIZE];
 };
 
 static struct comm_ctx_t ctx;
 
-// TODO maybe rewrite memcmp and memset if it saves flash
-
 static bool comm_is_retx_packet(const struct comm_packet_t *packet)
 {
     return (memcmp(packet, &ctx.retx_packet, COMM_PACKET_TOTAL_SIZE) == 0);
-}
-
-static bool comm_is_ack_packet(const struct comm_packet_t *packet)
-{
-    return (memcmp(packet, &ctx.ack_packet, COMM_PACKET_TOTAL_SIZE) == 0);
-}
-
-static void comm_create_ctrl_packet(struct comm_packet_t *packet, enum comm_packet_op_t op)
-{
-    comm_set_packet_length(packet, 1);
-    comm_set_packet_type(packet, COMM_PACKET_CTRL);
-    packet->payload[0] = op;
-    (void)memset(&packet->payload[COMM_PACKET_METADATA_SIZE], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1);
-    packet->crc.value = comm_compute_crc(packet);
 }
 
 int comm_init(void)
@@ -65,9 +50,8 @@ int comm_init(void)
         return err;
     }
 
-    /* Create retransmit and acknowledge packets */
-    comm_create_ctrl_packet(&ctx.retx_packet, COMM_PACKET_OP_RETX);
-    comm_create_ctrl_packet(&ctx.ack_packet, COMM_PACKET_OP_ACK);
+    /* Create retransmit packet */
+    comm_create_ctrl_packet(&ctx.retx_packet, COMM_PACKET_OP_RETX, NULL, 0);
 
     return 0;
 }
@@ -84,7 +68,7 @@ void comm_write(const struct comm_packet_t *packet)
 
 void comm_read(struct comm_packet_t *packet)
 {
-    (void)ring_buffer_read(&ctx.packet_buffer, packet, COMM_PACKET_TOTAL_SIZE);
+    ring_buffer_read(&ctx.packet_buffer, packet, COMM_PACKET_TOTAL_SIZE);
 }
 
 bool comm_packets_available(void)
@@ -94,7 +78,7 @@ bool comm_packets_available(void)
 
 uint16_t comm_compute_crc(const struct comm_packet_t *packet)
 {
-    return crc16_xmodem(packet, COMM_PACKET_TOTAL_SIZE - COMM_PACKET_CRC16_SIZE);
+    return utils_crc16_xmodem(packet, COMM_PACKET_TOTAL_SIZE - COMM_PACKET_CRC16_SIZE);
 }
 
 int comm_set_packet_type(struct comm_packet_t *packet, enum comm_packet_type_t type)
@@ -113,6 +97,15 @@ int comm_set_packet_type(struct comm_packet_t *packet, enum comm_packet_type_t t
     return 0;
 }
 
+enum comm_packet_type_t comm_get_packet_type(const struct comm_packet_t *packet)
+{
+    if (packet == NULL) {
+        return -EINVAL;
+    }
+
+    return (packet->metadata & COMM_PACKET_TYPE_MASK) >> COMM_PACKET_TYPE_SHIFT;
+}
+
 int comm_set_packet_length(struct comm_packet_t *packet, uint8_t length)
 {
     if (packet == NULL) {
@@ -125,6 +118,40 @@ int comm_set_packet_length(struct comm_packet_t *packet, uint8_t length)
 
     packet->metadata &= ~COMM_PACKET_LENGTH_MASK;
     packet->metadata |= (length << COMM_PACKET_LENGTH_SHIFT) & COMM_PACKET_LENGTH_MASK;
+
+    return 0;
+}
+
+uint8_t comm_get_packet_length(const struct comm_packet_t *packet)
+{
+    if (packet == NULL) {
+        return -EINVAL;
+    }
+
+    return (packet->metadata & COMM_PACKET_LENGTH_MASK) >> COMM_PACKET_LENGTH_SHIFT;
+}
+
+int comm_create_ctrl_packet(struct comm_packet_t *packet, enum comm_packet_op_t op, const void *payload, size_t payload_size)
+{
+    if (packet == NULL) {
+        return -EINVAL;
+    }
+
+    if (payload_size >= COMM_PACKET_PAYLOAD_SIZE) {
+        return -E2BIG;
+    }
+
+    comm_set_packet_length(packet, payload_size + 1);
+    comm_set_packet_type(packet, COMM_PACKET_CTRL);
+
+    const size_t padding_size = COMM_PACKET_PAYLOAD_SIZE - payload_size - 1;
+    packet->payload[0] = op;
+    if (payload != NULL) {  
+        memcpy(&packet->payload[1], payload, payload_size);
+    }
+    memset(&packet->payload[payload_size + 1], COMM_PACKET_PADDING_BYTE, padding_size);
+
+    packet->crc.value = comm_compute_crc(packet);
 
     return 0;
 }
@@ -172,19 +199,12 @@ void comm_task(void)
                     break;
                 }
 
-                /* Handle acknowledge packet */
-                if (comm_is_ack_packet(&ctx.current_rx_packet)) {
-                    ctx.state = COMM_RECEIVE_METADATA;
-                    break;
-                }
-
                 /* Handle data packet */
                 const size_t written = ring_buffer_write(&ctx.packet_buffer, &ctx.current_rx_packet, COMM_PACKET_TOTAL_SIZE);
                 if (written != COMM_PACKET_TOTAL_SIZE) {
                     __asm__ __volatile__("bkpt #0\n"); // TODO just for debug
                 }
 
-                comm_write(&ctx.ack_packet);
                 ctx.state = COMM_RECEIVE_METADATA;
             } break;
 

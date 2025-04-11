@@ -11,7 +11,9 @@
 #define FLASH_BOOTLOADER_SIZE 0x2000 // TODO keep in sync with linker script
 
 #define FLASH_MAIN_APP_START (FLASH_BOOTLOADER_START + FLASH_BOOTLOADER_SIZE)
+#define FLASH_MAIN_APP_SIZE (FLASH_SIZE - FLASH_BOOTLOADER_SIZE)
 
 void flash_erase_main_app(void);
+
 int flash_write(size_t addr, const void *data, size_t size);
 void flash_read(size_t addr, void *data, size_t size);

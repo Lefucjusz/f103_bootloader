@@ -16,7 +16,9 @@
         "stdbool.h": "c",
         "string_view": "c",
         "flash.h": "c",
-        "flash_common_f01.h": "c"
+        "flash_common_f01.h": "c",
+        "timer.h": "c",
+        "sync.h": "c"
     },
-    "cortex-debug.variableUseNaturalFormat": false
+    "cortex-debug.variableUseNaturalFormat": true
 }
