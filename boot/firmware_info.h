@@ -1,4 +1,6 @@
 #pragma once
 
+#define FW_DEVICE_ID 0x69
+
 #define FW_STACK_PTR_ENTRY_OFFSET (0x00000000)
 #define FW_RESET_VECTOR_ENTRY_OFFSET (0x00000004)

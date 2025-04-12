@@ -192,11 +192,8 @@ void comm_task(void)
                     break;
                 }
 
-                /* Handle data packet */
-                const size_t written = ring_buffer_write(&ctx.packet_buffer, &ctx.current_rx_packet, COMM_PACKET_TOTAL_SIZE);
-                if (written != COMM_PACKET_TOTAL_SIZE) {
-                    __asm__ __volatile__("bkpt #0\n"); // TODO just for debug
-                }
+                /* Handle data packet, this should never fail */
+                (void)ring_buffer_write(&ctx.packet_buffer, &ctx.current_rx_packet, COMM_PACKET_TOTAL_SIZE);
 
                 ctx.state = COMM_RECEIVE_METADATA;
             } break;

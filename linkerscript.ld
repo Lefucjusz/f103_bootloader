@@ -89,6 +89,13 @@ SECTIONS
 	} >RAM AT >FLASH
 	_data_loadaddr = LOADADDR(.data);
 
+	/* Pad the bootloader to maximum allowed size */
+	.flash_padding : {
+		FILL(0xFF);
+		. = ORIGIN(FLASH) + LENGTH(FLASH) - 1;
+		BYTE(0xFF)
+	} >FLASH
+
 	.bss : {
 		*(.bss*)	/* Read-write zero initialized data */
 		*(COMMON)
@@ -107,3 +114,4 @@ SECTIONS
 }
 
 PROVIDE(_stack = ORIGIN(RAM) + LENGTH(RAM));
+PROVIDE(_bootloader_size = LENGTH(FLASH));

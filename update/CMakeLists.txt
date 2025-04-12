@@ -17,4 +17,5 @@ target_link_libraries(update
         timer
         utils
         flash
+        system
 )

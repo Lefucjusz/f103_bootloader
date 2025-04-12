@@ -33,7 +33,7 @@ void usart1_isr(void)
     const bool data_received = usart_get_flag(UART_PERIPH, USART_FLAG_RXNE);
 
     if (data_received || is_overrun) {
-        ring_buffer_write_byte(&ctx.rx_buf, usart_recv(UART_PERIPH)); // Just ignore any errors as there's no way to recover
+        (void)ring_buffer_write_byte(&ctx.rx_buf, usart_recv(UART_PERIPH)); // Just ignore any errors as there's no way to recover
     }
 }
 

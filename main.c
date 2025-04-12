@@ -15,6 +15,10 @@ int main(void)
     /* Run update procedure */
     update_run();
 
+    /* Do not exit immediately as it causes some issues with transferring update
+     * complete packet. I guess the peripherals get deinitialized too quickly. */
+    system_delay_ms(100);
+
     /* Deinit peripherals */
     uart_deinit();
     system_deinit();

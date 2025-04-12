@@ -2,9 +2,9 @@
 #include <uart.h>
 #include <comm.h>
 #include <timer.h>
-#include <utils.h>
 #include <flash.h>
-#include <errno.h>
+#include <system.h>
+#include <firmware_info.h>
 #include <string.h>
 
 #define UPDATE_SYNC_SEQUENCE 0x33303146
@@ -93,7 +93,7 @@ static void update_wait_for_sync(void)
         ctx.sync_seq.raw[UPDATE_SYNC_SEQUENCE_SIZE - 1] = uart_read_byte();
 
         if (ctx.sync_seq.value == UPDATE_SYNC_SEQUENCE) {
-            const uint8_t device_id = DEVICE_ID;
+            const uint8_t device_id = FW_DEVICE_ID;
             comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_SYNCED, &device_id, sizeof(device_id));
             comm_write(&ctx.packet);
 
@@ -137,8 +137,6 @@ static void update_get_fw_size(void)
             return;
         }
 
-        flash_erase_main_app(); // TODO this should be erased when getting first packet?
-
         comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
         comm_write(&ctx.packet);
 
@@ -160,6 +158,11 @@ static void update_get_fw(void)
             return;
         }
 
+        /* Erase right before writing to be able to rollback */
+        if (ctx.bytes_received == 0) {
+            flash_erase_main_app();
+        }
+
         flash_write(FLASH_MAIN_APP_START + ctx.bytes_received, ctx.packet.payload, comm_get_packet_length(&ctx.packet));
 
         ctx.bytes_received += comm_get_packet_length(&ctx.packet);
@@ -171,7 +174,7 @@ static void update_get_fw(void)
             comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_FW_UPDATE_DONE, NULL, 0);
             comm_write(&ctx.packet);
 
-            ctx.state = UPDATE_DONE; // TODO add disconnection state after here
+            ctx.state = UPDATE_DONE;
         }
     }
 }
