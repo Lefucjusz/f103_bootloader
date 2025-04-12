@@ -20,6 +20,8 @@ int main(void)
     while (1) {
         
     }
+
+    // TODO deinit everything
     
     return 0;
 }

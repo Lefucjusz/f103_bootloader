@@ -12,9 +12,6 @@
 
 #define UPDATE_TIMEOUT_MS 50000 // TODO fix this
 
-#define UPDATE_REQUEST_PACKET_SIZE 1
-#define UPDATE_FW_SIZE_PACKET_SIZE (1 + 4)
-
 enum update_state_t
 {
     UPDATE_WAIT_FOR_SYNC,
@@ -44,7 +41,7 @@ static struct update_ctx_t ctx;
 
 static bool update_is_update_request_packet(const struct comm_packet_t *packet)
 {
-    if (comm_get_packet_length(packet) != UPDATE_REQUEST_PACKET_SIZE) {
+    if (comm_get_packet_length(packet) != COMM_REQUEST_PACKET_SIZE) {
         return false;
     }
 
@@ -56,16 +53,12 @@ static bool update_is_update_request_packet(const struct comm_packet_t *packet)
         return false;
     }
 
-    if (!utils_memcheck(&packet->payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1)) { // TODO is checking this needed?
-        return false;
-    }
-
     return true;
 }
 
 static bool update_parse_fw_size_packet(const struct comm_packet_t *packet, uint32_t *fw_size)
 {
-    if (comm_get_packet_length(packet) != UPDATE_FW_SIZE_PACKET_SIZE) {
+    if (comm_get_packet_length(packet) != COMM_FW_SIZE_PACKET_SIZE) {
         return false;
     }
 
@@ -79,24 +72,6 @@ static bool update_parse_fw_size_packet(const struct comm_packet_t *packet, uint
 
     *fw_size = *(uint32_t *)&packet->payload[1]; // Firmware size is coded on 4 bytes
     if (*fw_size > FLASH_MAIN_APP_SIZE) {
-        return false;
-    }
-
-    if (!utils_memcheck(&packet->payload[UPDATE_FW_SIZE_PACKET_SIZE], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - UPDATE_FW_SIZE_PACKET_SIZE)) {
-        return false;
-    }
-
-    return true;
-}
-
-static bool update_is_data_packet(const struct comm_packet_t *packet)
-{
-    if (comm_get_packet_type(packet) != COMM_PACKET_DATA) {
-        return false;
-    }
-
-    const uint8_t length = comm_get_packet_length(packet);
-    if (!utils_memcheck(&packet->payload[length], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - length)) {
         return false;
     }
 
@@ -162,6 +137,8 @@ static void update_get_fw_size(void)
             return;
         }
 
+        flash_erase_main_app();
+
         comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
         comm_write(&ctx.packet);
 
@@ -178,16 +155,19 @@ static void update_get_fw(void)
 {
     if (comm_packets_available()) {
         comm_read(&ctx.packet);
-        if (!update_is_data_packet(&ctx.packet)) {
+        if (comm_get_packet_type(&ctx.packet) != COMM_PACKET_DATA) {
             update_handle_failure();
             return;
         }
 
-        // TODO write data
-        __asm__ __volatile__("nop\n");
+        flash_write(FLASH_MAIN_APP_START + ctx.bytes_received, ctx.packet.payload, comm_get_packet_length(&ctx.packet));
 
         ctx.bytes_received += comm_get_packet_length(&ctx.packet);
-        if (ctx.bytes_received >= ctx.firmware_size) {
+        if (ctx.bytes_received < ctx.firmware_size) {
+            comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
+            comm_write(&ctx.packet);
+        }
+        else {
             comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_FW_UPDATE_DONE, NULL, 0);
             comm_write(&ctx.packet);
 

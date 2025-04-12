@@ -11,6 +11,9 @@
 
 #define COMM_PACKET_PADDING_BYTE 0xFF
 
+#define COMM_REQUEST_PACKET_SIZE 1
+#define COMM_FW_SIZE_PACKET_SIZE (1 + 4)
+
 enum comm_packet_type_t
 {
     COMM_PACKET_DATA = 0,
