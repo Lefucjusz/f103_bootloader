@@ -27,6 +27,6 @@ int main(void)
 void hard_fault_handler(void)
 {
     while (1) {
-        __asm__ __volatile__("nop\n");
+        __asm__ __volatile__("bkpt #0\n");
     }
 }

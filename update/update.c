@@ -56,7 +56,7 @@ static bool update_is_update_request_packet(const struct comm_packet_t *packet)
         return false;
     }
 
-    if (!utils_memcheck(&packet->payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1)) {
+    if (!utils_memcheck(&packet->payload[1], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - 1)) { // TODO is checking this needed?
         return false;
     }
 
@@ -89,6 +89,28 @@ static bool update_parse_fw_size_packet(const struct comm_packet_t *packet, uint
     return true;
 }
 
+static bool update_is_data_packet(const struct comm_packet_t *packet)
+{
+    if (comm_get_packet_type(packet) != COMM_PACKET_DATA) {
+        return false;
+    }
+
+    const uint8_t length = comm_get_packet_length(packet);
+    if (!utils_memcheck(&packet->payload[length], COMM_PACKET_PADDING_BYTE, COMM_PACKET_PAYLOAD_SIZE - length)) {
+        return false;
+    }
+
+    return true;
+}
+
+static void update_handle_failure(void)
+{
+    comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_NACK, NULL, 0); // TODO add failure reason in payload
+    comm_write(&ctx.packet);
+
+    ctx.state = UPDATE_DONE;
+}
+
 static void update_wait_for_sync(void)
 {
     if (uart_data_available()) {
@@ -104,6 +126,7 @@ static void update_wait_for_sync(void)
             ctx.state = UPDATE_WAIT_FOR_REQUEST;
         }
     }
+
     if (timer_has_elapsed(&ctx.timer)) {
         ctx.state = UPDATE_DONE;
     }
@@ -114,20 +137,19 @@ static void update_wait_for_request(void)
     if (comm_packets_available()) {
         comm_read(&ctx.packet); 
         if (!update_is_update_request_packet(&ctx.packet)) {
-            // TODO inform process failed
-            ctx.state = UPDATE_DONE;
+            update_handle_failure();
             return;
         }
         
-        comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_UPDATE_RESPONSE, NULL, 0);
+        comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
         comm_write(&ctx.packet);
 
         timer_reset(&ctx.timer);
         ctx.state = UPDATE_GET_FW_SIZE;
     }
+
     if (timer_has_elapsed(&ctx.timer)) {
-        // TODO inform process failed
-        ctx.state = UPDATE_DONE;
+        update_handle_failure();
     }
 }
 
@@ -136,8 +158,7 @@ static void update_get_fw_size(void)
     if (comm_packets_available()) {
         comm_read(&ctx.packet);
         if (!update_parse_fw_size_packet(&ctx.packet, &ctx.firmware_size)) {
-            // TODO inform process failed
-            ctx.state = UPDATE_DONE;
+            update_handle_failure();
             return;
         }
 
@@ -147,20 +168,37 @@ static void update_get_fw_size(void)
         timer_reset(&ctx.timer);
         ctx.state = UPDATE_GET_FW;
     }
+
     if (timer_has_elapsed(&ctx.timer)) {
-        // TODO inform process failed
-        ctx.state = UPDATE_DONE;
+        update_handle_failure();
     }
 }
 
 static void update_get_fw(void)
 {
+    if (comm_packets_available()) {
+        comm_read(&ctx.packet);
+        if (!update_is_data_packet(&ctx.packet)) {
+            update_handle_failure();
+            return;
+        }
 
+        // TODO write data
+        __asm__ __volatile__("nop\n");
+
+        ctx.bytes_received += comm_get_packet_length(&ctx.packet);
+        if (ctx.bytes_received >= ctx.firmware_size) {
+            comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_FW_UPDATE_DONE, NULL, 0);
+            comm_write(&ctx.packet);
+
+            ctx.state = UPDATE_DONE; // TODO add disconnection state after here
+        }
+    }
 }
 
 int update_run(void)
 {
-    int err = timer_init(&ctx.timer, UPDATE_TIMEOUT_MS);
+    const int err = timer_init(&ctx.timer, UPDATE_TIMEOUT_MS);
     if (err) {
         return err;
     }
@@ -195,5 +233,5 @@ int update_run(void)
         }
     }
 
-    return err;
+    return 0;
 }

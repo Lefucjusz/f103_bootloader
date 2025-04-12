@@ -5,9 +5,7 @@
 #include <string.h>
 #include <errno.h>
 
-// TODO maybe rewrite memcmp and memset if it saves flash
-
-#define COMM_PACKET_BUFFER_COUNT 8
+#define COMM_PACKET_BUFFER_COUNT 4
 #define COMM_PACKET_BUFFER_SIZE (COMM_PACKET_BUFFER_COUNT * sizeof(struct comm_packet_t))
 
 #define COMM_PACKET_LENGTH_SHIFT 0

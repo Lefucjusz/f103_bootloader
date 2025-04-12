@@ -20,12 +20,12 @@ enum comm_packet_type_t
 
 enum comm_packet_op_t
 {
-    COMM_PACKET_OP_UPDATE_RESPONSE = 0x05,  // Device response with ID sent in payload
+    COMM_PACKET_OP_FW_UPDATE_DONE = 0x04,   // Firmware update done
     COMM_PACKET_OP_ACK = 0x06,              // General acknowledge
     COMM_PACKET_OP_UPDATE_REQUEST = 0x11,   // Firmware update request
-    COMM_PACKET_OP_FW_SIZE_REQUEST = 0x12,  // Device firmware request
+    COMM_PACKET_OP_FW_SIZE_REQUEST = 0x12,  // Device firmware size request
     COMM_PACKET_OP_NACK = 0x15,             // General negative acknowledge, terminates communication
-    COMM_PACKET_OP_SYNCED = 0x16,           // Transmission sync info
+    COMM_PACKET_OP_SYNCED = 0x16,           // Transmission sync info with ID
     COMM_PACKET_OP_RETX = 0x18              // Packet retransmission request
 };
 
