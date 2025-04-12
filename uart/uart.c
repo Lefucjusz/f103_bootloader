@@ -33,17 +33,14 @@ void usart1_isr(void)
     const bool data_received = usart_get_flag(UART_PERIPH, USART_FLAG_RXNE);
 
     if (data_received || is_overrun) {
-        (void)ring_buffer_write_byte(&ctx.rx_buf, usart_recv(UART_PERIPH)); // Just ignore any errors as there's no way to recover
+        ring_buffer_write_byte(&ctx.rx_buf, usart_recv(UART_PERIPH)); // Just ignore any errors as there's no way to recover
     }
 }
 
-int uart_init(void)
+void uart_init(void)
 {
     /* Initialize Rx ring buffer */
-    const int err = ring_buffer_init(&ctx.rx_buf, ctx.rx_buf_data, sizeof(ctx.rx_buf_data));
-    if (err) {
-        return err;
-    }
+    ring_buffer_init(&ctx.rx_buf, ctx.rx_buf_data, sizeof(ctx.rx_buf_data));
 
     /* Configure UART pins */
     rcc_periph_clock_enable(UART_PORT_RCC);
@@ -69,6 +66,24 @@ int uart_init(void)
 
     /* Enable USART */
     usart_enable(UART_PERIPH);
+}
+
+void uart_deinit(void)
+{
+    /* Disable USART */
+    usart_disable(UART_PERIPH);
+
+    /* Disable Rx interupt */
+    usart_disable_rx_interrupt(UART_PERIPH);
+    nvic_disable_irq(UART_PERIPH_IRQ);
+
+    /* Disable UART clock */
+    rcc_periph_clock_disable(UART_PERIPH_RCC);
+
+    /* Set UART pins to inputs and disable GPIO clock */
+    gpio_set_mode(UART_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, UART_TX_PIN);
+    gpio_set_mode(UART_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, UART_RX_PIN);
+    rcc_periph_clock_disable(UART_PORT_RCC);
 }
 
 void uart_write(const void *data, size_t size)
@@ -98,7 +113,7 @@ uint8_t uart_read_byte(void)
 {
     uint8_t data;
 
-    (void)ring_buffer_read(&ctx.rx_buf, &data, sizeof(data));
+    ring_buffer_read(&ctx.rx_buf, &data, sizeof(data));
 
     return data;
 }

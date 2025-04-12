@@ -40,18 +40,13 @@ static bool comm_is_retx_packet(const struct comm_packet_t *packet)
     return (memcmp(packet, &ctx.retx_packet, COMM_PACKET_TOTAL_SIZE) == 0);
 }
 
-int comm_init(void)
+void comm_init(void)
 {
     /* Initialize packet ring buffer */
-    const int err = ring_buffer_init(&ctx.packet_buffer, ctx.packet_buffer_data, sizeof(ctx.packet_buffer_data));
-    if (err) {
-        return err;
-    }
+    ring_buffer_init(&ctx.packet_buffer, ctx.packet_buffer_data, sizeof(ctx.packet_buffer_data));
 
     /* Create retransmit packet */
     comm_create_ctrl_packet(&ctx.retx_packet, COMM_PACKET_OP_RETX, NULL, 0);
-
-    return 0;
 }
 
 void comm_write(const struct comm_packet_t *packet)

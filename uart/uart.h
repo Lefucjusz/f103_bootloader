@@ -4,7 +4,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-int uart_init(void);
+void uart_init(void);
+void uart_deinit(void);
 
 void uart_write(const void *data, size_t size);
 void uart_write_byte(uint8_t data);

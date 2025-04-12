@@ -3,27 +3,27 @@
 #include <system.h>
 #include <uart.h>
 #include <comm.h>
-#include <flash.h>
 #include <update.h>
+#include <boot.h>
 
 int main(void)
 {
     system_init();
     uart_init();
     comm_init();
-    
-    rcc_periph_clock_enable(RCC_GPIOC);
-    gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 
+    /* Run update procedure */
     update_run();
 
-    while (1) {
-        
-    }
+    /* Deinit peripherals */
+    uart_deinit();
+    system_deinit();
 
-    // TODO deinit everything
+    /* Boot main app */
+    boot_set_vector_table();
+    boot_jump_to_firmware();
     
-    return 0;
+    return 0; // Unreachable
 }
 
 void hard_fault_handler(void)

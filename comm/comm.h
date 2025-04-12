@@ -42,7 +42,7 @@ struct comm_packet_t
     } crc;
 } __attribute__((packed));
 
-int comm_init(void);
+void comm_init(void);
 
 void comm_write(const struct comm_packet_t *packet);
 void comm_read(struct comm_packet_t *packet);

@@ -25,6 +25,14 @@ void system_init(void)
     systick_interrupt_enable();
 }
 
+void system_deinit(void)
+{
+    /* Disable SysTick */
+    systick_interrupt_disable();
+    systick_counter_disable();
+    systick_clear();
+}
+
 uint32_t system_get_ticks(void)
 {
     return ctx.ticks;

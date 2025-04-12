@@ -10,7 +10,7 @@
 #define UPDATE_SYNC_SEQUENCE 0x33303146
 #define UPDATE_SYNC_SEQUENCE_SIZE 4
 
-#define UPDATE_TIMEOUT_MS 50000 // TODO fix this
+#define UPDATE_TIMEOUT_MS 2000
 
 enum update_state_t
 {
@@ -137,7 +137,7 @@ static void update_get_fw_size(void)
             return;
         }
 
-        flash_erase_main_app();
+        flash_erase_main_app(); // TODO this should be erased when getting first packet?
 
         comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
         comm_write(&ctx.packet);
@@ -176,12 +176,9 @@ static void update_get_fw(void)
     }
 }
 
-int update_run(void)
+void update_run(void)
 {
-    const int err = timer_init(&ctx.timer, UPDATE_TIMEOUT_MS);
-    if (err) {
-        return err;
-    }
+    timer_init(&ctx.timer, UPDATE_TIMEOUT_MS);
 
     ctx.state = UPDATE_WAIT_FOR_SYNC;
 
@@ -212,6 +209,4 @@ int update_run(void)
             comm_task();
         }
     }
-
-    return 0;
 }

@@ -7,9 +7,11 @@ project(f103_bootloader C ASM)
 
 include(cmake/stm32f103.cmake)
 
-add_executable(${CMAKE_PROJECT_NAME} main.c)
+set(EXECUTABLE ${CMAKE_PROJECT_NAME})
 
-target_link_options(${CMAKE_PROJECT_NAME} 
+add_executable(${EXECUTABLE} main.c)
+
+target_link_options(${EXECUTABLE}
     PRIVATE 
         -T ${CMAKE_SOURCE_DIR}/linkerscript.ld
 )
@@ -21,16 +23,19 @@ add_subdirectory(comm)
 add_subdirectory(flash)
 add_subdirectory(timer)
 add_subdirectory(update)
+add_subdirectory(boot)
 
-target_link_libraries(${CMAKE_PROJECT_NAME}
+target_link_libraries(${EXECUTABLE}
     PRIVATE
         stm32f103
         system
         uart
         comm
-        flash
-        timer
         update
+        boot
 )
 
-# TODO clean link libraries
+# Generate executable as bin file
+add_custom_command(TARGET ${EXECUTABLE} POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${EXECUTABLE}> ${EXECUTABLE}.bin
+)
