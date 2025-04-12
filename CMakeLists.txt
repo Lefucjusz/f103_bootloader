@@ -5,10 +5,23 @@ set(CMAKE_TOOLCHAIN_FILE cmake/arm-none-eabi-gcc.cmake)
 
 project(f103_bootloader C ASM)
 
+set(COMPILE_OPTIONS
+    --static
+    -nostartfiles
+    -fno-common
+    -mcpu=cortex-m3
+    -mthumb
+    -mfloat-abi=soft
+    -Wl,--print-memory-usage
+    -Wl,-Map=${CMAKE_PROJECT_NAME}.map
+)
+
+add_compile_options(${COMPILE_OPTIONS})
+add_link_options(${COMPILE_OPTIONS})
+
 include(cmake/stm32f103.cmake)
 
 set(EXECUTABLE ${CMAKE_PROJECT_NAME})
-
 add_executable(${EXECUTABLE} main.c)
 
 target_link_options(${EXECUTABLE}
@@ -24,6 +37,7 @@ add_subdirectory(flash)
 add_subdirectory(timer)
 add_subdirectory(update)
 add_subdirectory(boot)
+add_subdirectory(third-party)
 
 target_link_libraries(${EXECUTABLE}
     PRIVATE

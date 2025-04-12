@@ -18,4 +18,5 @@ target_link_libraries(update
         utils
         flash
         system
+        tiny-aes
 )

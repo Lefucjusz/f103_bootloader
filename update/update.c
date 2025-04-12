@@ -5,6 +5,7 @@
 #include <flash.h>
 #include <system.h>
 #include <firmware_info.h>
+#include <aes.h>
 #include <string.h>
 
 #define UPDATE_SYNC_SEQUENCE 0x33303146
@@ -17,6 +18,7 @@ enum update_state_t
     UPDATE_WAIT_FOR_SYNC,
     UPDATE_WAIT_FOR_REQUEST,
     UPDATE_GET_FW_SIZE,
+    UPDATE_GET_AES_IV,
     UPDATE_GET_FW,
     UPDATE_DONE
 };
@@ -35,6 +37,7 @@ struct update_ctx_t
     union update_sync_seq_t sync_seq;
     uint32_t firmware_size;
     uint32_t bytes_received;
+    struct AES_ctx aes;
 };
 
 static struct update_ctx_t ctx;
@@ -141,12 +144,40 @@ static void update_get_fw_size(void)
         comm_write(&ctx.packet);
 
         timer_reset(&ctx.timer);
-        ctx.state = UPDATE_GET_FW;
+        ctx.state = UPDATE_GET_AES_IV;
     }
 
     if (timer_has_elapsed(&ctx.timer)) {
         update_handle_failure();
     }
+}
+
+static void update_get_aes_iv(void)
+{
+    if (comm_packets_available()) {
+        comm_read(&ctx.packet);
+        if (comm_get_packet_type(&ctx.packet) != COMM_PACKET_DATA) {
+            update_handle_failure();
+            return;
+        }
+
+        /* Erase flash as late as possible, this way we can rollback from any previous step */
+        flash_erase_main_app();
+
+        /* First firmware packet is an IV for AES */
+        AES_init_ctx_iv(&ctx.aes, "0123456789ABCDEF", ctx.packet.payload); // TODO proper key
+
+        /* It's not really needed, but write it to flash anyway */
+        const uint8_t packet_length = comm_get_packet_length(&ctx.packet);
+        flash_write(FLASH_MAIN_APP_START + ctx.bytes_received, ctx.packet.payload, packet_length);
+
+        comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
+        comm_write(&ctx.packet);
+
+        ctx.bytes_received += packet_length;
+        ctx.state = UPDATE_GET_FW;
+    }
+    // TODO timeout
 }
 
 static void update_get_fw(void)
@@ -158,14 +189,12 @@ static void update_get_fw(void)
             return;
         }
 
-        /* Erase right before writing to be able to rollback */
-        if (ctx.bytes_received == 0) {
-            flash_erase_main_app();
-        }
+        const uint8_t packet_length = comm_get_packet_length(&ctx.packet);
 
-        flash_write(FLASH_MAIN_APP_START + ctx.bytes_received, ctx.packet.payload, comm_get_packet_length(&ctx.packet));
+        AES_CBC_decrypt_buffer(&ctx.aes, ctx.packet.payload, packet_length);
+        flash_write(FLASH_MAIN_APP_START + ctx.bytes_received, ctx.packet.payload, packet_length);
 
-        ctx.bytes_received += comm_get_packet_length(&ctx.packet);
+        ctx.bytes_received += packet_length;
         if (ctx.bytes_received < ctx.firmware_size) {
             comm_create_ctrl_packet(&ctx.packet, COMM_PACKET_OP_ACK, NULL, 0);
             comm_write(&ctx.packet);
@@ -177,6 +206,7 @@ static void update_get_fw(void)
             ctx.state = UPDATE_DONE;
         }
     }
+    // TODO timeout
 }
 
 void update_run(void)
@@ -197,6 +227,10 @@ void update_run(void)
 
             case UPDATE_GET_FW_SIZE:
                 update_get_fw_size();
+                break;
+
+            case UPDATE_GET_AES_IV:
+                update_get_aes_iv();
                 break;
 
             case UPDATE_GET_FW:

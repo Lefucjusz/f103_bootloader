@@ -1,3 +1,6 @@
 [submodule "third-party/libopencm3"]
 	path = third-party/libopencm3
 	url = git@github.com:libopencm3/libopencm3.git
+[submodule "third-party/tiny-AES-c"]
+	path = third-party/tiny-AES-c
+	url = git@github.com:kokke/tiny-AES-c.git
