@@ -10,7 +10,7 @@ target_include_directories(boot
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
-target_link_libraries(update
+target_link_libraries(boot
     INTERFACE
         flash
         utils

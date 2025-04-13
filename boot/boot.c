@@ -44,7 +44,7 @@ bool boot_verify_image(void)
 {
     uint8_t fw_hash[SIZE_OF_SHA_256_HASH];
     struct fw_header_t header;
-    
+
     /* Read firmware header */
     flash_read(FLASH_MAIN_APP_START, &header, sizeof(header));
 

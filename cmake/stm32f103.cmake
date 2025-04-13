@@ -11,17 +11,3 @@ add_dependencies(stm32f103 libopencm3)
 target_link_directories(stm32f103 INTERFACE ${OPENCM3_ROOT_DIR}/lib)
 
 target_compile_definitions(stm32f103 INTERFACE STM32F1)
-
-# set(COMPILE_OPTIONS
-#     --static
-#     -nostartfiles
-#     -fno-common
-#     -mcpu=cortex-m3
-#     -mthumb
-#     -mfloat-abi=soft
-#     -Wl,--print-memory-usage
-#     -Wl,-Map=${CMAKE_PROJECT_NAME}.map
-# )
-
-# target_compile_options(${COMPILE_OPTIONS})
-# target_link_options(${COMPILE_OPTIONS})
