@@ -13,7 +13,7 @@ extern volatile char _bootloader_size[];
 #define FLASH_BOOTLOADER_SIZE (size_t)_bootloader_size
 
 #define FLASH_MAIN_APP_START (FLASH_BOOTLOADER_START + FLASH_BOOTLOADER_SIZE)
-#define FLASH_MAIN_APP_SIZE (FLASH_SIZE - FLASH_BOOTLOADER_SIZE)
+#define FLASH_MAIN_APP_MAX_SIZE (FLASH_SIZE - FLASH_BOOTLOADER_SIZE)
 
 void flash_erase_main_app(void);
 

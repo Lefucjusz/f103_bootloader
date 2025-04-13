@@ -2,7 +2,7 @@ add_library(comm INTERFACE)
 
 target_sources(comm
     INTERFACE
-        comm.c
+        ${CMAKE_CURRENT_LIST_DIR}/comm.c
 )
 
 target_include_directories(comm

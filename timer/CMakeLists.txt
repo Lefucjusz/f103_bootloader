@@ -2,7 +2,7 @@ add_library(timer INTERFACE)
 
 target_sources(timer
     INTERFACE
-        timer.c
+        ${CMAKE_CURRENT_LIST_DIR}/timer.c
 )
 
 target_include_directories(timer

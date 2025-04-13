@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 /* Generic implementation of non-reflect CRC16 */
 inline static uint16_t utils_crc16(uint16_t poly, uint16_t seed, const void *data, size_t size)
 {

@@ -46,3 +46,10 @@ void system_delay_ms(uint32_t ms)
         __asm__ __volatile__("nop\n");
     }
 }
+
+__attribute__((noreturn)) void system_panic(void)
+{
+    while (1) {
+        __asm__ __volatile__("nop\n");
+    }
+}

@@ -4,6 +4,7 @@
 #include <timer.h>
 #include <flash.h>
 #include <system.h>
+#include <keys.h>
 #include <firmware_info.h>
 #include <aes.h>
 #include <string.h>
@@ -74,7 +75,7 @@ static bool update_parse_fw_size_packet(const struct comm_packet_t *packet, uint
     }
 
     *fw_size = *(uint32_t *)&packet->payload[1]; // Firmware size is coded on 4 bytes
-    if (*fw_size > FLASH_MAIN_APP_SIZE) {
+    if (*fw_size > FLASH_MAIN_APP_MAX_SIZE) {
         return false;
     }
 
@@ -165,7 +166,7 @@ static void update_get_aes_iv(void)
         flash_erase_main_app();
 
         /* First firmware packet is an IV for AES */
-        AES_init_ctx_iv(&ctx.aes, "0123456789ABCDEF", ctx.packet.payload); // TODO proper key
+        AES_init_ctx_iv(&ctx.aes, aes_key, ctx.packet.payload);
 
         /* It's not really needed, but write it to flash anyway */
         const uint8_t packet_length = comm_get_packet_length(&ctx.packet);

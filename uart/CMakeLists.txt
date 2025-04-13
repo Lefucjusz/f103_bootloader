@@ -2,7 +2,7 @@ add_library(uart INTERFACE)
 
 target_sources(uart
     INTERFACE
-        uart.c
+        ${CMAKE_CURRENT_LIST_DIR}/uart.c
 )
 
 target_include_directories(uart

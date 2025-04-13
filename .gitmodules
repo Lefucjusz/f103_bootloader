@@ -4,3 +4,9 @@
 [submodule "third-party/tiny-AES-c"]
 	path = third-party/tiny-AES-c
 	url = git@github.com:kokke/tiny-AES-c.git
+[submodule "third-party/sha-2/sha-2"]
+	path = third-party/sha-2/sha-2
+	url = git@github.com:amosnier/sha-2.git
+[submodule "third-party/micro-ecc/micro-ecc"]
+	path = third-party/micro-ecc/micro-ecc
+	url = git@github.com:kmackay/micro-ecc.git

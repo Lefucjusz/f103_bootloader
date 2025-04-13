@@ -2,7 +2,7 @@ add_library(flash INTERFACE)
 
 target_sources(flash
     INTERFACE
-        flash.c
+        ${CMAKE_CURRENT_LIST_DIR}/flash.c
 )
 
 target_include_directories(flash

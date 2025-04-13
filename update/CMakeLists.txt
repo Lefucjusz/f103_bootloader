@@ -2,7 +2,7 @@ add_library(update INTERFACE)
 
 target_sources(update
     INTERFACE
-        update.c
+        ${CMAKE_CURRENT_LIST_DIR}/update.c
 )
 
 target_include_directories(update

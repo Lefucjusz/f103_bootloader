@@ -2,7 +2,7 @@ add_library(boot INTERFACE)
 
 target_sources(boot
     INTERFACE
-        boot.c
+        ${CMAKE_CURRENT_LIST_DIR}/boot.c
 )
 
 target_include_directories(boot
@@ -13,4 +13,7 @@ target_include_directories(boot
 target_link_libraries(update
     INTERFACE
         flash
+        utils
+        sha-2
+        micro-ecc
 )

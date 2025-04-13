@@ -2,7 +2,7 @@ add_library(system INTERFACE)
 
 target_sources(system
     INTERFACE
-        system.c
+        ${CMAKE_CURRENT_LIST_DIR}/system.c
 )
 
 target_include_directories(system

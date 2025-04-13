@@ -10,3 +10,5 @@ void system_deinit(void);
 
 uint32_t system_get_ticks(void);
 void system_delay_ms(uint32_t ms);
+
+__attribute__((noreturn)) void system_panic(void);
