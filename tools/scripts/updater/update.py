@@ -50,6 +50,11 @@ class Update:
         return True
 
 
+    def send_packet(self, packet: Packet) -> None:
+        self.port.write(packet.get_raw())
+        self.last_tx_packet = packet
+
+
     def rx_callback(self, data: bytes) -> None:
         # Append new data to buffer
         self.rx_buffer += data
@@ -65,7 +70,7 @@ class Update:
             # Validate packet
             if not packet.is_valid():
                 print('Got invalid packet, requesting retransmission')
-                self.port.write(Packet(Packet.Operation.RETX.value, Packet.Type.CONTROL).get_raw())
+                self.send_packet(Packet(Packet.Operation.RETX.value, Packet.Type.CONTROL))
             elif packet.is_operation(Packet.Operation.RETX):
                 print('Requested retransmission of last packet')
                 self.port.write(self.last_tx_packet.get_raw())
@@ -84,7 +89,7 @@ class Update:
                         self.state = self.UpdateState.DONE
                     else:
                         print('Device ID valid, requesting update...')
-                        self.port.write(Packet(Packet.Operation.UPDATE_REQUEST.value, Packet.Type.CONTROL).get_raw())
+                        self.send_packet(Packet(Packet.Operation.UPDATE_REQUEST.value, Packet.Type.CONTROL))
                         self.state = self.UpdateState.ACK_UPDATE
                 else:
                     print('Sending sync sequence...')
@@ -100,7 +105,7 @@ class Update:
                     else:
                         print('Update request confirmed, sending firmware size...')
                         packet_data = Packet.Operation.FW_SIZE_REQUEST.value + int.to_bytes(self.file_size, 4, 'little')
-                        self.port.write(Packet(packet_data, Packet.Type.CONTROL).get_raw())
+                        self.send_packet(Packet(packet_data, Packet.Type.CONTROL))
                         self.state = self.UpdateState.ACK_FW_SIZE
 
             case self.UpdateState.ACK_FW_SIZE:
@@ -116,7 +121,7 @@ class Update:
             case self.UpdateState.SEND_FW_DATA:
                 self.print_progress()
                 chunk = self.file.read(Packet.PAYLOAD_SIZE)
-                self.port.write(Packet(chunk).get_raw())
+                self.send_packet(Packet(chunk))
                 self.state = self.UpdateState.ACK_DATA
 
             case self.UpdateState.ACK_DATA:
@@ -125,16 +130,16 @@ class Update:
                     if packet.is_operation(Packet.Operation.ACK):
                         self.state = self.UpdateState.SEND_FW_DATA
                     elif packet.is_operation(Packet.Operation.FW_UPDATE_DONE):
-                        print("\nUpdate done!")
+                        print('\nUpdate done!')
                         self.state = self.UpdateState.DONE
                     else:
-                        print("\nFailed to get ACK!")
+                        print('\nFailed to get ACK!')
                         self.state = self.UpdateState.DONE
 
 
     def run(self, port_path: str, file_path: str, device_id: bytes) -> None:
         self.device_id = device_id
-        self.file = open(file_path, "rb")
+        self.file = open(file_path, 'rb')
         self.file_size = os.path.getsize(file_path)
         self.port = serial.Serial(port_path, baudrate=self.BAUDRATE, timeout=1)
 
