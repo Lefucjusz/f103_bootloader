@@ -10,7 +10,6 @@ SIGNATURE_SIZE = 64
 
 AES_BLOCK_SIZE_BITS = 128 # AES128
 AES_BLOCK_SIZE = AES_BLOCK_SIZE_BITS // 8
-AES_KEY = '0123456789ABCDEF'
 
 # FW header has to be multiple of 128 due to SCB->VTOR bits [6:0] being unused
 HEADER_SIZE = 128
@@ -18,7 +17,7 @@ HEADER_PADDING_SIZE = 36
 HEADER_PADDING_BYTE = b'\xFF'
 
 
-def sign(firmware_path: str, signed_firmware_path: str, private_key_path: str, version: int, device_id: int) -> None:
+def sign(firmware_path: str, signed_firmware_path: str, aes_key_path: str, private_key_path: str, version: int, device_id: int) -> None:
     # Read firmware data and remove header placeholder
     with open(firmware_path, 'rb') as f:
         firmware_data = f.read()
@@ -44,9 +43,16 @@ def sign(firmware_path: str, signed_firmware_path: str, private_key_path: str, v
     padder = padding.PKCS7(AES_BLOCK_SIZE_BITS).padder()
     firmware_data = padder.update(firmware_data) + padder.finalize()
 
+    # Read AES128 key
+    with open(aes_key_path, 'rb') as f:
+        aes_key = f.read()
+    if len(aes_key) != AES_BLOCK_SIZE:
+        print('Invalid AES128 key size!')
+        return
+
     # Generate IV and encrypt the firmware
     iv = secrets.token_bytes(AES_BLOCK_SIZE)
-    cipher = Cipher(algorithms.AES(AES_KEY.encode()), modes.CBC(iv))
+    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv))
     encryptor = cipher.encryptor()
     encrypted_firmware_data = encryptor.update(firmware_data) + encryptor.finalize()
 
@@ -55,7 +61,7 @@ def sign(firmware_path: str, signed_firmware_path: str, private_key_path: str, v
         f.write(iv + encrypted_firmware_data)
 
 
-def verify(signed_firmware_path: str, public_key_path: str):
+def verify(signed_firmware_path: str, aes_key_path: str, public_key_path: str):
     # Read encrypted firmware data
     with open(signed_firmware_path, 'rb') as f:
         encrypted_firmware_data = f.read()
@@ -64,8 +70,15 @@ def verify(signed_firmware_path: str, public_key_path: str):
     iv = encrypted_firmware_data[:AES_BLOCK_SIZE]
     encrypted_firmware_data = encrypted_firmware_data[AES_BLOCK_SIZE:]
 
+    # Read AES128 key
+    with open(aes_key_path, 'rb') as f:
+        aes_key = f.read()
+    if len(aes_key) != AES_BLOCK_SIZE:
+        print('Invalid AES128 key size!')
+        return
+
     # Decrypt firmware
-    cipher = Cipher(algorithms.AES(AES_KEY.encode()), modes.CBC(iv))
+    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv))
     decryptor = cipher.decryptor()
     firmware_data = decryptor.update(encrypted_firmware_data)
 
@@ -110,6 +123,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('firmware_path', help='path to compiled binary to be signed', type=str)
     parser.add_argument('output_path', help='path to output signed binary file', type=str)
+    parser.add_argument('aes_key_path', help='path to AES128 key to use to encrypt the firmware', type=str)
     parser.add_argument('private_key_path', help='path to private ECDSA key in PEM format to use to sign the firmware', type=str)
     parser.add_argument('public_key_path', help='path to public ECDSA key in PEM format to use to verify the signature', type=str)
     parser.add_argument('version', help='firmware version number', type=int)
@@ -122,9 +136,9 @@ def main() -> None:
         device_id = int(args.device_id)
 
     print('Signing...')
-    sign(args.firmware_path, args.output_path, args.private_key_path, args.version, device_id)
+    sign(args.firmware_path, args.output_path, args.aes_key_path, args.private_key_path, args.version, device_id)
     print('Firmware signed! Performing verification...')
-    verify(args.output_path, args.public_key_path)
+    verify(args.output_path, args.aes_key_path, args.public_key_path)
 
 
 if __name__ == '__main__':
