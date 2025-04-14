@@ -13,6 +13,7 @@ set(COMPILE_OPTIONS
     -mthumb
     -mfloat-abi=soft
     -Wl,--print-memory-usage
+    -specs=nano.specs
 )
 
 add_compile_options(${COMPILE_OPTIONS})
@@ -20,14 +21,7 @@ add_link_options(${COMPILE_OPTIONS})
 
 include(cmake/stm32f103.cmake)
 
-add_subdirectory(system)
-add_subdirectory(uart)
-add_subdirectory(utilities)
-add_subdirectory(comm)
-add_subdirectory(flash)
-add_subdirectory(timer)
-add_subdirectory(update)
-add_subdirectory(boot)
+add_subdirectory(common)
 add_subdirectory(third-party)
 
 # Bootloader executable
@@ -76,6 +70,8 @@ target_link_libraries(${FW_EXECUTABLE}
         stm32f103
         system
         boot
+        uart
+        timer
 )
 
 # Generate executable as bin file

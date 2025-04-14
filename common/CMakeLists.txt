@@ -1,0 +1,8 @@
+add_subdirectory(boot)
+add_subdirectory(comm)
+add_subdirectory(flash)
+add_subdirectory(system)
+add_subdirectory(timer)
+add_subdirectory(uart)
+add_subdirectory(update)
+add_subdirectory(utilities)
