@@ -1,15 +1,10 @@
-import os
-import secrets
 from cryptography.hazmat.primitives import hashes, serialization, padding
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature, encode_dss_signature
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.exceptions import InvalidSignature
-
-FW_FILE_PATH = '../../../build/firmware.bin' # TODO take these from command line
-SIGNED_FW_FILE_PATH = '../../../build/signed.bin'
-PRIVATE_KEY_PATH = '../../keys/private.pem'
-PUBLIC_KEY_PATH = '../../keys/public.pem'
+import secrets
+import argparse
 
 SIGNATURE_SIZE = 64
 
@@ -60,7 +55,7 @@ def sign(firmware_path: str, signed_firmware_path: str, private_key_path: str, v
         f.write(iv + encrypted_firmware_data)
 
 
-def validate(signed_firmware_path: str, public_key_path: str):
+def verify(signed_firmware_path: str, public_key_path: str):
     # Read encrypted firmware data
     with open(signed_firmware_path, 'rb') as f:
         encrypted_firmware_data = f.read()
@@ -83,14 +78,14 @@ def validate(signed_firmware_path: str, public_key_path: str):
     firmware_data = firmware_data[4:]
 
     print(f'Version: {version}')
-    print(f'ID: {id}')
-    print(f'Size: {size}')
+    print(f'ID: 0x{id:02X}')
+    print(f'Size: {size}B')
 
     # Get signature from data
     signature = firmware_data[:SIGNATURE_SIZE]
     firmware_data = firmware_data[SIGNATURE_SIZE:]
 
-    # Skip padding
+    # Skip header padding
     firmware_data = firmware_data[HEADER_PADDING_SIZE:]
 
     # Remove AES padding
@@ -106,11 +101,31 @@ def validate(signed_firmware_path: str, public_key_path: str):
 
     try:
         key.verify(der_signature, firmware_data, ec.ECDSA(hashes.SHA256()))
-        print("Signature valid!")
+        print('Signature valid!')
     except InvalidSignature:
-        print("Signature invalid!")
+        print('Signature invalid!')
 
 
-if __name__ == "__main__":
-    sign(FW_FILE_PATH, SIGNED_FW_FILE_PATH, PRIVATE_KEY_PATH, 0, 0x69)
-    validate(SIGNED_FW_FILE_PATH, PUBLIC_KEY_PATH)
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('firmware_path', help='path to compiled binary to be signed', type=str)
+    parser.add_argument('output_path', help='path to output signed binary file', type=str)
+    parser.add_argument('private_key_path', help='path to private ECDSA key in PEM format to use to sign the firmware', type=str)
+    parser.add_argument('public_key_path', help='path to public ECDSA key in PEM format to use to verify the signature', type=str)
+    parser.add_argument('version', help='firmware version number', type=int)
+    parser.add_argument('device_id', help='ID of the device this firmware is for', type=str)
+    args = parser.parse_args()
+
+    if args.device_id.startswith('0x'):
+        device_id = int(args.device_id, 16)
+    else:
+        device_id = int(args.device_id)
+
+    print('Signing...')
+    sign(args.firmware_path, args.output_path, args.private_key_path, args.version, device_id)
+    print('Firmware signed! Performing verification...')
+    verify(args.output_path, args.public_key_path)
+
+
+if __name__ == '__main__':
+    main()
