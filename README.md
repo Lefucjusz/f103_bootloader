@@ -19,20 +19,7 @@ Clone this repo and fetch the submodules by the following command:
 git submodule update --init
 ```
 
-## Building binaries
-
-To build the binaries, run the following commands from the root of the repository:
-
-```
-mkdir build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
-make
-```
-
-This will build both the bootloader and firmware binaries. You can use any other build type except for `Debug`, as then the bootloader will not fit into its slot in flash.
-
-## Signing the firmware
+## Preparing Python environment
 
 Create a Python virtual environment and activate it:
 
@@ -47,10 +34,53 @@ Install the required libraries:
 pip3 install pyserial cryptography
 ```
 
+## Generating ECDSA keys
+
+### Generating keys in PEM format
+
+To generate ECDSA keys that will be used to sign the firmware binary, navigate to `tools/keys` directory and run the following command:
+
+```
+python3 ../scripts/signer/keys_generator.py . key
+```
+
+This will create ECDSA public-private key pair using the `secp256k1` elliptic curve and store them in the `tools/keys/key_private.pem` and `tools/keys/key_public.pem` files.
+
+### Converting public key to binary
+
+The next step is to convert the newly generated public key from PEM format to the binary format expected by the signature verification algorithm implemented in the bootloader. To do that, run the following command:
+
+```
+python3 ../scripts/signer/key_converter.py key_public.pem key_public_binary.txt
+```
+
+The script will extract the raw data of the key and store it in the `tools/keys/key_public_binary.txt` file.
+
+### Adding the public key to bootloader
+
+The bootloader needs access to the public key to perform signature verification. Typically, such keys are stored in secure OTP memory available on the MCU. However, for this demo I decided to just embed it directly into the bootloader as a `const` array.
+
+To add the newly generated key, copy the entire contents of `tools/keys/key_public_binary.txt` and paste it into `common/boot/keys.h`, replacing the existing `ecdsa_public_key` array.
+
+## Building binaries
+
+To build the binaries, run the following commands from the root of the repository:
+
+```
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo
+make
+```
+
+This will build both the bootloader and firmware binaries. Use either `MinSizeRel` or `RelWithDebInfo` build type, otherwise the bootloader will not fit into its slot in flash memory.
+
+## Signing the firmware
+
 To sign the firmware, navigate to `build` directory and execute the signer script:
 
 ```
-python3 ../tools/scripts/signer/signer.py firmware.bin signed.bin ../tools/keys/aes128.bin ../tools/keys/private.pem ../tools/keys/public.pem <version> <device_id>
+python3 ../tools/scripts/signer/signer.py firmware.bin signed.bin ../tools/keys/aes128.bin ../tools/keys/key_private.pem ../tools/keys/key_public.pem <version> <device_id>
 ```
 
 Version field can be set to any number, device ID is hardcoded to `0x69` in bootloader's code, so using any other value will result in image verification failure during booting.
